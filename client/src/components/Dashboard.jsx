@@ -8,7 +8,32 @@ function Dashboard() {
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
-  const username = localStorage.getItem('username') || 'Anonymous';
+  // const username = localStorage.getItem('username') || 'Anonymous';
+// In Dashboard.jsx, update the username retrieval part:
+
+// With this code block:
+const [username, setUsername] = useState('Loading...');
+
+useEffect(() => {
+  // Get username from localStorage with safeguards
+  try {
+    const storedUsername = localStorage.getItem('username');
+    
+    // If username exists and is not empty
+    if (storedUsername && storedUsername.trim() !== '') {
+      console.log('Dashboard: Retrieved username:', storedUsername);
+      setUsername(storedUsername);
+    } else {
+      console.warn('Dashboard: No username found in localStorage');
+      // Redirect to login if no username found
+      navigate('/login');
+    }
+  } catch (error) {
+    console.error('Dashboard: Error getting username:', error);
+    setUsername('User');
+  }
+}, [navigate]);
+
 
   // Use a separate namespaced room for the notes list
   const SHARED_NOTES_ROOM = 'shared-notes-list';

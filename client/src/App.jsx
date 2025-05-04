@@ -8,53 +8,90 @@ import './App.css';
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [loginChecked, setLoginChecked] = useState(false);
 
+  // One-time check for login status on app initialization
   useEffect(() => {
-    // Check for username in localStorage
-    const username = localStorage.getItem('username');
+    console.log('App component mounted - checking login status');
     
-    if (username) {
-      console.log('User is logged in:', username);
-      setIsLoggedIn(true);
-    } else {
-      console.log('No user logged in');
-      setIsLoggedIn(false);
-    }
-    
-    setIsLoading(false);
-  }, []);
-
-  // Setup listener for storage changes (in case user logs out in another tab)
-  useEffect(() => {
-    const handleStorageChange = () => {
+    try {
+      // Check for username in localStorage
       const username = localStorage.getItem('username');
-      setIsLoggedIn(!!username);
-    };
+      console.log('Username from localStorage:', username);
+      
+      // Set login status based on presence of username
+      if (username && username.trim() !== '') {
+        console.log('User is logged in:', username);
+        setIsLoggedIn(true);
+      } else {
+        console.log('No user logged in');
+        setIsLoggedIn(false);
+      }
+    } catch (error) {
+      console.error('Error checking login status:', error);
+      setIsLoggedIn(false);
+    } finally {
+      // Always mark loading as complete and login as checked
+      setIsLoading(false);
+      setLoginChecked(true);
+    }
+  }, []); // Empty dependency array ensures this runs only once
 
-    window.addEventListener('storage', handleStorageChange);
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
+  // Handle login and logout actions
+  const handleLogin = (username) => {
+    localStorage.setItem('username', username);
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('username');
+    setIsLoggedIn(false);
+  };
 
   // Show loading state
   if (isLoading) {
-    return <div className="loading">Loading...</div>;
+    return (
+      <div className="loading-container">
+        <div className="loading-spinner"></div>
+        <p>Loading application...</p>
+      </div>
+    );
+  }
+
+  // Only render routes once login check is complete
+  if (!loginChecked) {
+    return null;
   }
 
   return (
     <div className="app-container">
       <Router>
         <Routes>
-          <Route path="/" element={isLoggedIn ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} />
-          <Route path="/login" element={isLoggedIn ? <Navigate to="/dashboard" /> : <Login />} />
-          <Route path="/dashboard" element={isLoggedIn ? <Dashboard /> : <Navigate to="/login" />} />
-          <Route path="/note/:noteTitle" element={isLoggedIn ? <Editor /> : <Navigate to="/login" />} />
-          <Route path="*" element={<Navigate to="/" />} />
+          <Route 
+            path="/" 
+            element={isLoggedIn ? <Navigate to="/dashboard" /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/login" 
+            element={isLoggedIn ? <Navigate to="/dashboard" /> : <Login onLogin={handleLogin} />} 
+          />
+          <Route 
+            path="/dashboard" 
+            element={isLoggedIn ? <Dashboard onLogout={handleLogout} /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="/note/:noteTitle" 
+            element={isLoggedIn ? <Editor /> : <Navigate to="/login" />} 
+          />
+          <Route 
+            path="*" 
+            element={<Navigate to="/" />} 
+          />
         </Routes>
       </Router>
     </div>
   );
 }
+
 
 export default App;
