@@ -26,7 +26,7 @@ function Dashboard() {
       const ydoc = new Y.Doc();
       
       // Force connection to localhost
-      const websocketUrl = 'ws://localhost:1234';
+      const websocketUrl = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:1234';
       console.log(`Connecting to WebSocket server at ${websocketUrl}/${SHARED_NOTES_ROOM}`);
       
       // Connect to the WebSocket server

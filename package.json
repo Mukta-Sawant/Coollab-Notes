@@ -1,0 +1,17 @@
+{
+    "name": "collabnote-root",
+    "version": "1.0.0",
+    "description": "Collaborative note-taking application",
+    "scripts": {
+        "start": "node server/server.js",
+        "build": "cd client && npm install && npm run build",
+        "postinstall": "npm run build"
+    },
+    "engines": {
+        "node": ">=18"
+    },
+    "dependencies": {
+        "express": "^4.21.2",
+        "ws": "^8.18.2"
+    }
+}
