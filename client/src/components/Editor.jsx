@@ -168,6 +168,7 @@ function Editor() {
 }
 
 const styles = {
+  // Styles unchanged - same as provided before
   page: {
     backgroundColor: '#0d1117',
     minHeight: '100vh',
