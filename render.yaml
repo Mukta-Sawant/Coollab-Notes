@@ -1,0 +1,33 @@
+services:
+  # WebSocket server service
+  - type: web
+    name: collab-notes-websocket
+    env: node
+    region: oregon
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+
+  # Frontend React application
+  - type: web
+    name: collab-notes-frontend
+    env: static
+    region: oregon
+    plan: free
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_WEBSOCKET_URL
+        fromService:
+          name: collab-notes-websocket
+          type: web
+          property: url
