@@ -25,9 +25,11 @@ function Dashboard() {
       console.log('Setting up YDoc for notes list');
       const ydoc = new Y.Doc();
       
-      // Force connection to localhost
+      // Use environment variable with fallback
       const websocketUrl = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:1234';
       console.log(`Connecting to WebSocket server at ${websocketUrl}/${SHARED_NOTES_ROOM}`);
+      console.log('Environment variables:', import.meta.env);
+      console.log('WebSocket URL being used:', websocketUrl);
       
       // Connect to the WebSocket server
       const provider = new WebsocketProvider(
@@ -123,7 +125,7 @@ function Dashboard() {
       try {
         // Set up a temporary YDoc to add the note
         const ydoc = new Y.Doc();
-        const websocketUrl = 'ws://localhost:1234';
+        const websocketUrl = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:1234';
         const provider = new WebsocketProvider(websocketUrl, SHARED_NOTES_ROOM, ydoc);
         
         provider.on('status', event => {

@@ -21,7 +21,7 @@ function Editor() {
       // Create a new Y document
       const ydoc = new Y.Doc();
       
-      // Force connection to localhost
+      // Use environment variable with fallback
       const websocketUrl = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:1234';
       console.log(`Connecting to WebSocket server at ${websocketUrl}/${noteTitle}`);
       

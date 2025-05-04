@@ -12,8 +12,9 @@ const server = http.createServer((request, response) => {
   // Set CORS headers to allow connections from any origin
   response.setHeader('Access-Control-Allow-Origin', '*');
   response.setHeader('Access-Control-Request-Method', '*');
-  response.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET');
-  response.setHeader('Access-Control-Allow-Headers', '*');
+  response.setHeader('Access-Control-Allow-Methods', 'OPTIONS, GET, POST');
+  response.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept');
+  response.setHeader('Access-Control-Allow-Credentials', 'true');
   
   if (request.method === 'OPTIONS') {
     console.log('Responding to OPTIONS request');
@@ -27,8 +28,25 @@ const server = http.createServer((request, response) => {
   console.log('Sent 200 response');
 });
 
-// Create WebSocket server
-const wss = new WebSocket.Server({ server });
+// Create WebSocket server with heartbeat to keep connections alive
+const wss = new WebSocket.Server({ 
+  server,
+  // Allow for longer connection times and reconnection
+  clientTracking: true,
+  perMessageDeflate: {
+    zlibDeflateOptions: {
+      level: 6,
+      memLevel: 8,
+      windowBits: 15,
+    },
+    zlibInflateOptions: {
+      windowBits: 15,
+    },
+    serverNoContextTakeover: true,
+    clientNoContextTakeover: true,
+  }
+});
+
 console.log('WebSocket server created');
 
 // File path for persistence
@@ -44,10 +62,21 @@ if (!fs.existsSync(persistencePath)) {
 // Track connected clients
 const connectedClients = new Map();
 
+// Heartbeat to keep connections alive
+function heartbeat() {
+  this.isAlive = true;
+}
+
 // Listen for WebSocket connections
 wss.on('connection', (conn, req) => {
+  conn.isAlive = true;
+  conn.on('pong', heartbeat);
+  
   // Get the URL of the connection
-  const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+  // Support both Render.com deployments and local development
+  const host = req.headers.host || 'localhost';
+  const protocol = req.headers['x-forwarded-proto'] === 'https' ? 'https:' : 'http:';
+  const url = new URL(req.url, `${protocol}//${host}`);
   const roomName = url.pathname.slice(1) || 'default'; // Remove leading '/'
   
   console.log(`New WebSocket connection to room: ${roomName}`);
@@ -91,7 +120,7 @@ wss.on('connection', (conn, req) => {
     console.log('Setting up Yjs WebSocket connection');
     setupWSConnection(conn, req, {
       gc: true,
-      pingTimeout: 30000,
+      pingTimeout: 60000, // Increased timeout
       docName: roomName
     });
     console.log('Yjs WebSocket connection established successfully');
@@ -117,9 +146,27 @@ wss.on('connection', (conn, req) => {
   });
 });
 
+// Keep connections alive with ping/pong
+const interval = setInterval(function ping() {
+  wss.clients.forEach(function each(ws) {
+    if (ws.isAlive === false) {
+      console.log('Terminating inactive connection');
+      return ws.terminate();
+    }
+    
+    ws.isAlive = false;
+    ws.ping(() => {});
+  });
+}, 30000);
+
 // Handle WebSocket server errors
 wss.on('error', (error) => {
   console.error('WebSocket server error:', error);
+});
+
+// Handle close event to clean up interval
+wss.on('close', function close() {
+  clearInterval(interval);
 });
 
 // Start the server

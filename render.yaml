@@ -27,7 +27,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_WEBSOCKET_URL
-        fromService:
-          name: collab-notes-websocket
-          type: web
-          property: url
+        value: wss://collab-notes-websocket.onrender.com

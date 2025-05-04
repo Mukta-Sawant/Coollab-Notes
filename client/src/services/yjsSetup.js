@@ -6,12 +6,12 @@ export function setupYDoc(roomId) {
   // Create a new Y document
   const ydoc = new Y.Doc();
   
-  // FORCE the connection to localhost - no environment variables or remote URLs
-  const websocketUrl = 'ws://localhost:1234';
+  // Use environment variable with fallback
+  const websocketUrl = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:1234';
   
   console.log(`Connecting to WebSocket server: ${websocketUrl}`);
   
-  // Connect to the local WebSocket server
+  // Connect to the WebSocket server
   const wsProvider = new WebsocketProvider(
     websocketUrl,
     roomId,     // Use the note title as the room ID
