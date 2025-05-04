@@ -3,40 +3,35 @@ import { useNavigate } from 'react-router-dom';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 
-function Dashboard() {
+function Dashboard(props) {
   const navigate = useNavigate();
   const [notes, setNotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [connectionStatus, setConnectionStatus] = useState('connecting');
-  // const username = localStorage.getItem('username') || 'Anonymous';
-// In Dashboard.jsx, update the username retrieval part:
-
-// With this code block:
-const [username, setUsername] = useState('Loading...');
-
-useEffect(() => {
-  // Get username from localStorage with safeguards
-  try {
-    const storedUsername = localStorage.getItem('username');
-    
-    // If username exists and is not empty
-    if (storedUsername && storedUsername.trim() !== '') {
-      console.log('Dashboard: Retrieved username:', storedUsername);
-      setUsername(storedUsername);
-    } else {
-      console.warn('Dashboard: No username found in localStorage');
-      // Redirect to login if no username found
-      navigate('/login');
-    }
-  } catch (error) {
-    console.error('Dashboard: Error getting username:', error);
-    setUsername('User');
-  }
-}, [navigate]);
-
+  const [username, setUsername] = useState('Loading...');
 
   // Use a separate namespaced room for the notes list
   const SHARED_NOTES_ROOM = 'shared-notes-list';
+
+  // Get username from localStorage with safeguards
+  useEffect(() => {
+    try {
+      const storedUsername = localStorage.getItem('username');
+      
+      // If username exists and is not empty
+      if (storedUsername && storedUsername.trim() !== '') {
+        console.log('Dashboard: Retrieved username:', storedUsername);
+        setUsername(storedUsername);
+      } else {
+        console.warn('Dashboard: No username found in localStorage');
+        // Redirect to login if no username found
+        navigate('/login');
+      }
+    } catch (error) {
+      console.error('Dashboard: Error getting username:', error);
+      setUsername('User');
+    }
+  }, [navigate]);
 
   useEffect(() => {
     console.log('Dashboard component mounted');
@@ -218,7 +213,19 @@ useEffect(() => {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('username');
+    console.log('Logging out user');
+    
+    // Use the onLogout prop if provided
+    if (props.onLogout) {
+      props.onLogout();
+      console.log('Used onLogout prop to handle logout');
+    } else {
+      // Fallback to direct localStorage manipulation
+      localStorage.removeItem('username');
+      console.log('Used direct localStorage removal for logout');
+    }
+    
+    // Redirect to login page
     navigate('/login');
   };
 
@@ -317,10 +324,6 @@ const styles = {
     fontWeight: 'bold',
     transition: 'transform 0.2s, box-shadow 0.2s',
     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    '&:hover': {
-      transform: 'translateY(-3px)',
-      boxShadow: '0 6px 10px rgba(0, 0, 0, 0.15)',
-    }
   },
   loading: {
     textAlign: 'center',

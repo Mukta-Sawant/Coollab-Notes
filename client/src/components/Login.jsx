@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-function Login() {
+function Login(props) {
   const [username, setUsername] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -22,6 +22,12 @@ function Login() {
       // If username exists and is not empty
       if (storedUsername && storedUsername.trim() !== '') {
         console.log('User already logged in, redirecting to dashboard');
+        
+        // Use the props.onLogin to properly register the login
+        if (props.onLogin) {
+          props.onLogin(storedUsername);
+        }
+        
         navigate('/dashboard');
       } else {
         // No stored username, show login form
@@ -33,7 +39,7 @@ function Login() {
       setError('An error occurred while checking login status');
       setIsLoading(false);
     }
-  }, [navigate]);
+  }, [navigate, props]);
 
   const handleLogin = (e) => {
     if (e) e.preventDefault(); // Prevent form submission default behavior
@@ -49,8 +55,15 @@ function Login() {
       const trimmedUsername = username.trim();
       console.log('Setting username in localStorage:', trimmedUsername);
       
-      // Store username in localStorage
-      localStorage.setItem('username', trimmedUsername);
+      // Use onLogin prop if available (preferred method)
+      if (props.onLogin) {
+        props.onLogin(trimmedUsername);
+        console.log('Used onLogin prop to register login');
+      } else {
+        // Fallback - direct localStorage manipulation
+        localStorage.setItem('username', trimmedUsername);
+        console.log('Used direct localStorage manipulation for login');
+      }
       
       // Verify storage worked
       const storedUsername = localStorage.getItem('username');
@@ -177,10 +190,6 @@ const styles = {
     borderRadius: '50%',
     borderTop: '4px solid #4caf50',
     animation: 'spin 1s linear infinite'
-  },
-  '@keyframes spin': {
-    '0%': { transform: 'rotate(0deg)' },
-    '100%': { transform: 'rotate(360deg)' }
   }
 };
 

@@ -64,8 +64,7 @@
   padding: 0 20px;
 }
 
-/* // Add to App.css: */
-
+/* Loading spinner styles */
 .loading-container {
   display: flex;
   flex-direction: column;
@@ -89,7 +88,6 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
-
 
 /* Mobile responsive adjustments */
 @media (max-width: 768px) {
