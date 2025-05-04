@@ -18,29 +18,38 @@ function Editor() {
     console.log(`Editor component mounted for note: ${noteTitle}`);
     
     try {
-      // Create a new Y document
-      const ydoc = new Y.Doc();
+      // CRITICAL: Generate a truly unique document ID for this specific note
+      const cleanTitle = noteTitle.replace(/[^a-zA-Z0-9]/g, '-');
+      const uniqueDocId = `note-doc-${cleanTitle}`;
+      console.log(`Creating document with unique ID: ${uniqueDocId}`);
+      
+      // Create a new Y document with the unique ID
+      const ydoc = new Y.Doc({ guid: uniqueDocId });
       
       // Use environment variable with fallback
       const websocketUrl = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:1234';
       
-      // Use a namespaced room ID to prevent collision between different notes
-      const uniqueRoomId = `notes/${noteTitle}`;
+      // Use a more specific namespaced room ID
+      const uniqueRoomId = `note-room-${cleanTitle}`;
       console.log(`Connecting to WebSocket server at ${websocketUrl} for room: ${uniqueRoomId}`);
       
       // Connect to the WebSocket server with the unique room ID
       const wsProvider = new WebsocketProvider(
         websocketUrl,
-        uniqueRoomId, // Use the namespaced room ID
-        ydoc
+        uniqueRoomId,
+        ydoc,
+        { connect: true }
       );
       
-      // Also use a unique name for IndexedDB persistence
-      const indexeddbProvider = new IndexeddbPersistence(`notes_${noteTitle}`, ydoc);
+      // Use a unique name for IndexedDB persistence
+      const uniqueStorageId = `note-storage-${cleanTitle}`;
+      console.log(`Setting up IndexedDB persistence with ID: ${uniqueStorageId}`);
+      const indexeddbProvider = new IndexeddbPersistence(uniqueStorageId, ydoc);
       
-      // Get the shared text from the document
-      const sharedText = ydoc.getText('shared-text');
-      console.log('Initial shared text:', sharedText.toString());
+      // Get the shared text from the document with a unique key
+      const sharedTextKey = 'content';
+      const sharedText = ydoc.getText(sharedTextKey);
+      console.log(`Initial shared text for ${sharedTextKey}:`, sharedText.toString());
       
       // Set initial text
       setText(sharedText.toString());
@@ -49,43 +58,44 @@ function Editor() {
       setYText(sharedText);
       
       // Update UI when text changes
-      sharedText.observe(() => {
-        console.log('Text changed:', sharedText.toString());
+      sharedText.observe(event => {
+        console.log(`Text changed for ${noteTitle}:`, sharedText.toString());
         setText(sharedText.toString());
       });
       
       // Handle connection status
       wsProvider.on('status', event => {
-        console.log('WebSocket status changed:', event.status);
+        console.log(`WebSocket status changed for ${noteTitle}:`, event.status);
         setConnectionStatus(event.status);
       });
       
       // Log errors
       wsProvider.on('connection-error', error => {
-        console.error('WebSocket connection error:', error);
+        console.error(`WebSocket connection error for ${noteTitle}:`, error);
       });
       
       // Track collaborators using awareness
       wsProvider.awareness.on('change', () => {
         // Count clients excluding ourselves
         const clients = Array.from(wsProvider.awareness.getStates().keys());
-        console.log('Connected clients:', clients);
+        console.log(`Connected clients for ${noteTitle}:`, clients);
         setCollaboratorCount(clients.length);
       });
       
       // Set local user info in awareness
       wsProvider.awareness.setLocalStateField('user', {
         name: username,
+        id: `${username}-${Date.now()}`, // Add unique ID
         color: '#' + Math.floor(Math.random() * 16777215).toString(16) // Random color
       });
       
       // Load from IndexedDB when synced
       indexeddbProvider.on('synced', () => {
-        console.log('Loaded content from IndexedDB');
+        console.log(`Loaded content from IndexedDB for ${noteTitle}`);
         
         // If the text is empty but we have a local copy, use that
         if (sharedText.toString() === '') {
-          const savedContent = localStorage.getItem(`note-${noteTitle}`);
+          const savedContent = localStorage.getItem(`note-content-${noteTitle}`);
           if (savedContent) {
             console.log('Using saved content from local storage');
             sharedText.insert(0, savedContent);
@@ -95,15 +105,15 @@ function Editor() {
       
       // Clean up on unmount
       return () => {
-        console.log('Editor component unmounting, cleaning up YJS');
+        console.log(`Editor component unmounting for ${noteTitle}, cleaning up YJS`);
         wsProvider.disconnect();
         ydoc.destroy();
       };
     } catch (error) {
-      console.error('Error setting up YJS:', error);
+      console.error(`Error setting up YJS for ${noteTitle}:`, error);
       
       // If YJS fails, load from local storage
-      const savedContent = localStorage.getItem(`note-${noteTitle}`);
+      const savedContent = localStorage.getItem(`note-content-${noteTitle}`);
       if (savedContent) {
         setText(savedContent);
       }
@@ -112,7 +122,7 @@ function Editor() {
 
   const handleChange = (e) => {
     if (yText) {
-      console.log('Updating text:', e.target.value);
+      console.log(`Updating text for ${noteTitle}:`, e.target.value);
       // Replace the entire text
       yText.delete(0, yText.length);
       yText.insert(0, e.target.value);
@@ -124,7 +134,7 @@ function Editor() {
 
   const handleSave = () => {
     const currentText = yText ? yText.toString() : text;
-    localStorage.setItem(`note-${noteTitle}`, currentText);
+    localStorage.setItem(`note-content-${noteTitle}`, currentText);
     alert('✅ Note saved successfully to local storage!');
   };
 
@@ -168,7 +178,6 @@ function Editor() {
 }
 
 const styles = {
-  // Styles unchanged - same as provided before
   page: {
     backgroundColor: '#0d1117',
     minHeight: '100vh',

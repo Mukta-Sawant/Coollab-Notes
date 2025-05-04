@@ -113,6 +113,7 @@ function Dashboard(props) {
       // Add awareness information for this user
       provider.awareness.setLocalStateField('user', {
         name: username,
+        id: `${username}-${Date.now()}`, // Add unique ID for awareness
         color: '#' + Math.floor(Math.random() * 16777215).toString(16) // Random color
       });
       
@@ -166,21 +167,42 @@ function Dashboard(props) {
               sharedNotes.push([title.trim()]);
               console.log('Added new note to shared list:', title.trim());
               
-              // Also create an empty document for this note
-              // This ensures a blank note is created
+              // Create a clean empty document for this note with explicit unique identifiers
               try {
-                const noteDoc = new Y.Doc();
+                // Sanitize title for use in IDs
+                const cleanTitle = title.trim().replace(/[^a-zA-Z0-9]/g, '-');
+                const uniqueDocId = `note-doc-${cleanTitle}`;
+                const uniqueRoomId = `note-room-${cleanTitle}`;
+                
+                console.log(`Creating empty document with ID ${uniqueDocId} for new note`);
+                
+                // Create new document with unique ID
+                const noteDoc = new Y.Doc({ guid: uniqueDocId });
+                
+                // Create empty text
+                const contentText = noteDoc.getText('content');
+                
+                // Connect to the unique room
                 const noteProvider = new WebsocketProvider(
                   websocketUrl,
-                  `notes/${title.trim()}`,  // Use namespaced room ID
-                  noteDoc
+                  uniqueRoomId,
+                  noteDoc,
+                  { connect: true }
                 );
                 
-                // Make sure to clean up this temporary connection
-                setTimeout(() => {
-                  noteProvider.disconnect();
-                  noteDoc.destroy();
-                }, 1000);
+                // Wait for connection and sync
+                noteProvider.on('sync', (isSynced) => {
+                  if (isSynced) {
+                    console.log(`New note document synced with room ${uniqueRoomId}`);
+                    
+                    // Clean up after we're sure it's synced
+                    setTimeout(() => {
+                      noteProvider.disconnect();
+                      noteDoc.destroy();
+                      console.log(`Cleaned up temporary document for ${title.trim()}`);
+                    }, 2000);
+                  }
+                });
               } catch (error) {
                 console.error('Error creating empty note document:', error);
               }
@@ -272,7 +294,6 @@ function Dashboard(props) {
 }
 
 const styles = {
-  // Styles unchanged - same as provided before
   page: { 
     backgroundColor: '#0d1117', 
     minHeight: '100vh', 
