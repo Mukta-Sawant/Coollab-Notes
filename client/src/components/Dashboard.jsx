@@ -10,7 +10,7 @@ function Dashboard() {
   const [connectionStatus, setConnectionStatus] = useState('connecting');
   const username = localStorage.getItem('username') || 'Anonymous';
 
-  // Use a shared room for all users to see the same notes list
+  // Use a separate namespaced room for the notes list
   const SHARED_NOTES_ROOM = 'shared-notes-list';
 
   useEffect(() => {
@@ -90,6 +90,12 @@ function Dashboard() {
         console.error('WebSocket connection error:', error);
       });
       
+      // Add awareness information for this user
+      provider.awareness.setLocalStateField('user', {
+        name: username,
+        color: '#' + Math.floor(Math.random() * 16777215).toString(16) // Random color
+      });
+      
       // Function to update notes state and remove duplicates
       function updateNotesState(notesArray) {
         // Convert flat array to unique array (remove duplicates)
@@ -139,9 +145,26 @@ function Dashboard() {
               // Add the new note
               sharedNotes.push([title.trim()]);
               console.log('Added new note to shared list:', title.trim());
+              
+              // Also create an empty document for this note
+              // This ensures a blank note is created
+              try {
+                const noteDoc = new Y.Doc();
+                const noteProvider = new WebsocketProvider(
+                  websocketUrl,
+                  `notes/${title.trim()}`,
+                  noteDoc
+                );
+                
+                // Make sure to clean up this temporary connection
+                setTimeout(() => {
+                  noteProvider.disconnect();
+                  noteDoc.destroy();
+                }, 1000);
+              } catch (error) {
+                console.error('Error creating empty note document:', error);
+              }
             }
-            
-            // No need to update state here, the observer will do it
             
             // Navigate to the note
             navigate(`/note/${encodeURIComponent(title.trim())}`);
@@ -269,6 +292,10 @@ const styles = {
     fontWeight: 'bold',
     transition: 'transform 0.2s, box-shadow 0.2s',
     boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    '&:hover': {
+      transform: 'translateY(-3px)',
+      boxShadow: '0 6px 10px rgba(0, 0, 0, 0.15)',
+    }
   },
   loading: {
     textAlign: 'center',

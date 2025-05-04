@@ -23,20 +23,20 @@ function Editor() {
       
       // Use environment variable with fallback
       const websocketUrl = import.meta.env.VITE_WEBSOCKET_URL || 'ws://localhost:1234';
-      console.log(`Connecting to WebSocket server at ${websocketUrl}/${noteTitle}`);
       
-      // Connect to the WebSocket server
+      // Use a namespaced room ID to prevent collision between different notes
+      const uniqueRoomId = `notes/${noteTitle}`;
+      console.log(`Connecting to WebSocket server at ${websocketUrl} for room: ${uniqueRoomId}`);
+      
+      // Connect to the WebSocket server with the unique room ID
       const wsProvider = new WebsocketProvider(
         websocketUrl,
-        noteTitle,
+        uniqueRoomId, // Use the namespaced room ID
         ydoc
       );
       
-      // The provider has an awareness property, not the other way around
-      // No need to set local user info, the WebSocket provider handles this
-      
-      // Enable persistence to IndexedDB
-      const indexeddbProvider = new IndexeddbPersistence(noteTitle, ydoc);
+      // Also use a unique name for IndexedDB persistence
+      const indexeddbProvider = new IndexeddbPersistence(`notes_${noteTitle}`, ydoc);
       
       // Get the shared text from the document
       const sharedText = ydoc.getText('shared-text');
@@ -65,11 +65,18 @@ function Editor() {
         console.error('WebSocket connection error:', error);
       });
       
-      // Manual tracking of collaborators - don't use awareness directly
-      wsProvider.on('sync', isSynced => {
-        console.log('Synchronized with peers:', isSynced);
-        // For now, just set to 1 (yourself) as we can't use awareness
-        setCollaboratorCount(1);
+      // Track collaborators using awareness
+      wsProvider.awareness.on('change', () => {
+        // Count clients excluding ourselves
+        const clients = Array.from(wsProvider.awareness.getStates().keys());
+        console.log('Connected clients:', clients);
+        setCollaboratorCount(clients.length);
+      });
+      
+      // Set local user info in awareness
+      wsProvider.awareness.setLocalStateField('user', {
+        name: username,
+        color: '#' + Math.floor(Math.random() * 16777215).toString(16) // Random color
       });
       
       // Load from IndexedDB when synced
